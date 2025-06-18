@@ -1346,7 +1346,7 @@ function greet(name) {
         function formatBytes(bytes, decimals = 2) {
             if (bytes === 0) return '0 Bytes v. 1.2';
             const k = 1024; const dm = decimals < 0 ? 0 : decimals;
-            const sizes = ['Bytes v. 1.1', 'KB v. 1.2', 'MB v. 1.2', 'GB v. 1.2', 'TB v. 1.2'];
+            const sizes = ['Bytes v. 1.2', 'KB v. 1.2', 'MB v. 1.2', 'GB v. 1.2', 'TB v. 1.2'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
         }
