@@ -1135,49 +1135,81 @@ function greet(name) {
         // SECTION: Sharing via URL (Compression/Decompression/Shortening)
         // -------------------------------------------
         async function generateShareLink() {
-            if (!editor) return;
+            console.log("generateShareLink started"); // DEBUG
+            if (!editor) {
+                console.error("Editor not found in generateShareLink"); // DEBUG
+                return;
+            }
             
             const originalShareBtnContent = shareBtn.innerHTML;
             shareBtn.innerHTML = 'Генерация... <span class="loading-indicator"></span>';
             shareBtn.disabled = true;
-            let longShareUrl = ''; // To store the long URL for fallback
+            let longShareUrl = ''; 
 
             try {
                 const title = noteTitleInput.value.trim();
                 const content = editor.getValue();
+                console.log("Title:", title, "Content length:", content.length); // DEBUG
                 
                 if (!content.trim()) {
                     showNotification("Нечего сохранять. Заметка пуста.", "warning");
                     shareBtn.innerHTML = originalShareBtnContent;
                     shareBtn.disabled = false;
+                    console.log("Content is empty, exiting."); // DEBUG
                     return;
                 }
 
-                const dataToShare = { t: title, c: content, l: currentLanguage, v: '1.2' }; // Увеличим версию на всякий случай
+                const dataToShare = { t: title, c: content, l: currentLanguage, v: '1.2' };
                 const jsonString = JSON.stringify(dataToShare);
+                console.log("jsonString length:", jsonString.length); // DEBUG
                 
-                // Сжатие в Uint8Array
                 const compressedUint8Array = pako.deflate(jsonString);
+                console.log("compressedUint8Array length:", compressedUint8Array.length); // DEBUG
                 
-                // Преобразование Uint8Array в бинарную строку для btoa
                 let binaryString = '';
                 for (let i = 0; i < compressedUint8Array.length; i++) {
                     binaryString += String.fromCharCode(compressedUint8Array[i]);
                 }
+                console.log("binaryString length:", binaryString.length); // DEBUG
                 
-                const base64Encoded = btoa(binaryString); // btoa работает с бинарной строкой
+                const base64Encoded = btoa(binaryString); 
+                console.log("base64Encoded length:", base64Encoded.length); // DEBUG
                 const urlSafeBase64 = base64UrlEncode(base64Encoded);
+                console.log("urlSafeBase64 length:", urlSafeBase64.length); // DEBUG
 
                 longShareUrl = `${location.origin}${location.pathname}#${urlSafeBase64}`;
+                console.log("longShareUrl:", longShareUrl); // DEBUG
                 
-                // ... (дальнейшая логика с is.gd API без изменений) ...
+                const isGdApiUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(longShareUrl)}`;
+                console.log("isGdApiUrl:", isGdApiUrl); // DEBUG
+                
+                showNotification("Создаю короткую ссылку...", "success", 1500);
+
+                const response = await fetch(isGdApiUrl);
+                console.log("is.gd response status:", response.status); // DEBUG
+                const data = await response.json(); 
+                console.log("is.gd response data:", data); // DEBUG
+
+                if (response.ok && data.shorturl) {
+                    shareUrlInput.value = data.shorturl;
+                    showNotification("Короткая ссылка создана!", "success");
+                } else if (data.errormessage) {
+                    console.warn("is.gd API error:", data.errormessage);
+                    shareUrlInput.value = longShareUrl; 
+                    showNotification(`Ошибка сокращения: ${data.errormessage}. Используется полная ссылка.`, "warning", 5000);
+                } else {
+                    console.warn("is.gd returned unexpected JSON or error:", data);
+                    shareUrlInput.value = longShareUrl; 
+                    showNotification("Не удалось сократить (неизвестный ответ API). Используется полная ссылка.", "warning", 5000);
+                }
 
             } catch (error) { 
-                console.error("Error generating or shortening share link:", error);
-                shareUrlInput.value = longShareUrl || "#error-generating-link";
+                console.error("Error in generateShareLink:", error.message, error.stack); // DEBUG
+                shareUrlInput.value = longShareUrl || "#error-generating-link"; 
                 showNotification(`Ошибка при создании/сокращении ссылки: ${error.message}. Попробуйте снова.`, "error", 5000);
             } finally {
-                showShareModal(); 
+                console.log("generateShareLink finished, showing modal."); // DEBUG
+                showShareModal(); // Убедитесь, что модальное окно показывается
                 shareBtn.innerHTML = originalShareBtnContent;
                 shareBtn.disabled = false;
             }
@@ -1248,7 +1280,10 @@ function greet(name) {
             }
         }
 
-        function showShareModal() { shareModal.classList.add('show'); }
+        function showShareModal() {
+            console.log("Showing share modal. Current URL in input:", shareUrlInput.value); // DEBUG
+            shareModal.classList.add('show');
+        }
         function hideShareModal() { shareModal.classList.remove('show'); }
 
         async function copyShareUrl() {
