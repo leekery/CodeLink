@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заметки с подсветкой синтаксиса</title>
+    
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/github.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+    <!-- CodeMirror Dialog CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.css">
+    
+    <style>
+        :root {
+            --bg-primary: #1a1a2e; /* Deep indigo */
+            --bg-secondary: #16213e; /* Dark blue */
+            --bg-tertiary: #0f172a; /* Very dark blue / almost black */
+            --text-primary: #e2e8f0; /* Light gray */
+            --text-secondary: #94a3b8; /* Medium gray */
+            --accent-primary: #6366f1; /* Indigo */
+            --accent-secondary: #8b5cf6; /* Violet */
+            --success: #10b981; /* Green */
+            --warning: #f59e0b; /* Amber */
+            --error: #ef4444; /* Red */
+            --border: #334155; /* Slate gray */
+            --glass-bg: rgba(30, 41, 59, 0.7); /* Translucent dark blue */
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f8fafc; /* Slate 50 */
+            --bg-secondary: #ffffff; /* White */
+            --bg-tertiary: #f1f5f9; /* Slate 100 */
+            --text-primary: #1e293b; /* Slate 800 */
+            --text-secondary: #64748b; /* Slate 500 */
+            --accent-primary: #4f46e5; /* Indigo 600 */
+            --accent-secondary: #7c3aed; /* Violet 600 */
+            --border: #e2e8f0; /* Slate 200 */
+            --glass-bg: rgba(255, 255, 255, 0.7); /* Translucent white */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            transition: background 0.5s ease, color 0.5s ease;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            text-align: center;
+            color: var(--text-primary);
+            margin-bottom: 25px;
+            font-size: 2.8em;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            align-items: end;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .title-input {
+            padding: 14px 18px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: inherit;
+            background: var(--bg-tertiary); /* Darker input background */
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .title-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+            background: var(--bg-secondary); /* Lighter on focus */
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transition: left 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .main-content {
+            flex: 1;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .language-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95em;
+            color: var(--text-secondary);
+        }
+
+        .language-badge {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+        }
+
+        .char-counter {
+            font-size: 0.95em;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .char-counter.warning {
+            color: var(--warning);
+            font-weight: 700;
+            animation: pulse-warning 1.2s infinite;
+        }
+        .char-counter.error {
+            color: var(--error);
+            font-weight: 700;
+            animation: pulse-error 0.8s infinite;
+        }
+
+        @keyframes pulse-warning { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }
+        @keyframes pulse-error { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
+
+
+        .editor-container {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            min-height: 500px; /* Ensure a minimum height for the editor */
+            position: relative;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .CodeMirror {
+            height: 100% !important; /* Critical for CM to fill container */
+            font-size: 15px;
+            line-height: 1.6;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background-color: transparent !important; /* Allow body/container background to show for themes */
+        }
+        
+        /* Ensure specific themes correctly adopt CSS vars */
+        .cm-s-material-darker.CodeMirror,
+        .cm-s-monokai.CodeMirror,
+        .cm-s-dracula.CodeMirror {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+        }
+        .cm-s-material-darker .CodeMirror-gutters,
+        .cm-s-monokai .CodeMirror-gutters,
+        .cm-s-dracula .CodeMirror-gutters {
+            background-color: var(--bg-secondary) !important;
+            border-right: 1px solid var(--border) !important;
+            color: var(--text-secondary) !important;
+        }
+        .cm-s-material-darker .CodeMirror-cursor,
+        .cm-s-monokai .CodeMirror-cursor,
+        .cm-s-dracula .CodeMirror-cursor {
+            border-left: 1px solid var(--accent-primary) !important;
+        }
+
+        .cm-s-github.CodeMirror { /* Light theme example */
+            background-color: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+        }
+        .cm-s-github .CodeMirror-gutters {
+            background-color: var(--bg-tertiary) !important;
+            border-right: 1px solid var(--border) !important;
+            color: var(--text-secondary) !important;
+        }
+
+
+        .preview-container {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 25px;
+            background: var(--bg-secondary);
+            overflow: auto;
+            min-height: 500px;
+            display: none;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+            color: var(--text-primary);
+        }
+
+        .preview-container.active {
+            display: block;
+        }
+
+        .preview-content {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.7;
+        }
+
+        .preview-content h1, .preview-content h2, .preview-content h3, .preview-content h4, .preview-content h5, .preview-content h6 {
+            margin-top: 1.8em;
+            margin-bottom: 0.8em;
+            color: var(--text-primary);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.4em;
+        }
+        .preview-content h1 { font-size: 2em; }
+        .preview-content h2 { font-size: 1.7em; }
+        .preview-content h3 { font-size: 1.4em; }
+        .preview-content h4 { font-size: 1.2em; }
+
+
+        .preview-content p {
+            margin-bottom: 1.2em;
+        }
+
+        .preview-content code {
+            background: var(--bg-tertiary);
+            padding: 0.2em 0.5em;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            color: var(--accent-primary);
+            border: 1px solid var(--border);
+        }
+
+        .preview-content pre {
+            background: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 1.5em 0;
+            border: 1px solid var(--border);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .preview-content pre code {
+            background: none;
+            padding: 0;
+            border: none;
+            color: inherit; /* Inherit color from pre in dark/light themes */
+            font-size: 0.9em;
+        }
+
+        .preview-content blockquote {
+            border-left: 4px solid var(--accent-primary);
+            padding-left: 20px;
+            margin: 1.5em 0;
+            color: var(--text-secondary);
+            font-style: italic;
+            background: rgba(var(--accent-primary-rgb, 99, 102, 241), 0.05); /* Soft background */
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        :root { /* Adding RGB versions for RGBA backgrounds */
+            --accent-primary-rgb: 99, 102, 241; 
+        }
+        [data-theme="light"] {
+            --accent-primary-rgb: 79, 70, 229;
+        }
+
+
+        .preview-content ul, .preview-content ol {
+            margin: 1.2em 0;
+            padding-left: 2.5em;
+        }
+
+        .preview-content li {
+            margin-bottom: 0.8em;
+        }
+        .preview-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5em 0;
+            border: 1px solid var(--border);
+        }
+        .preview-content th, .preview-content td {
+            border: 1px solid var(--border);
+            padding: 0.8em 1em;
+            text-align: left;
+        }
+        .preview-content th {
+            background-color: var(--bg-tertiary);
+            font-weight: 600;
+        }
+        .preview-content tr:nth-child(even) {
+            background-color: var(--bg-secondary);
+        }
+
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            align-items: center; /* For vertical centering */
+            justify-content: center; /* For horizontal centering */
+        }
+        .modal.show { /* Use class to toggle display */
+            display: flex; 
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            padding: 35px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+            position: relative;
+            border: 1px solid var(--border);
+            animation: modal-fade-in 0.3s ease-out;
+        }
+
+        @keyframes modal-fade-in {
+            from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .close {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.3s, transform 0.3s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: transparent;
+        }
+
+        .close:hover {
+            color: var(--text-primary);
+            background: var(--accent-primary);
+            transform: rotate(90deg);
+        }
+
+        .modal h2 {
+            margin-bottom: 25px;
+            color: var(--text-primary);
+            font-size: 1.8em;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5em;
+        }
+
+        .modal p {
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+            font-size: 0.95em;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 20px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 25px;
+            right: 25px;
+            padding: 18px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+            transform: translateX(calc(100% + 30px)); /* Start off-screen */
+            transition: transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            font-weight: 600;
+            border: 1px solid;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            min-width: 250px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: rgba(16, 185, 129, 0.85); /* Green */
+            color: white;
+            border-color: rgba(16, 185, 129, 1);
+        }
+
+        .notification.warning {
+            background: rgba(245, 158, 11, 0.85); /* Amber */
+            color: #432d03;
+            border-color: rgba(245, 158, 11, 1);
+        }
+
+        .notification.error {
+            background: rgba(239, 68, 68, 0.85); /* Red */
+            color: white;
+            border-color: rgba(239, 68, 68, 1);
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .theme-toggle label {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .theme-select {
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            min-width: 150px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            margin-top: 15px;
+            border-top: 1px solid var(--border);
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .syntax-highlight { /* Editor container styling */
+            position: relative;
+            overflow: hidden;
+        }
+
+        .syntax-highlight::before { /* Top border accent */
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            opacity: 0.7;
+            z-index: 10; /* Above CodeMirror */
+        }
+
+        /* CodeMirror Dialog styling to match theme */
+        .CodeMirror-dialog {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .CodeMirror-dialog input {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+        }
+        .CodeMirror-dialog button {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .CodeMirror-dialog button:hover {
+            background: var(--accent-secondary);
+        }
+
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            .editor-header {
+                flex-direction: column;
+                align-items: flex-start; /* Align items to start */
+                gap: 10px;
+            }
+            .modal-content {
+                margin: 5% auto;
+                padding: 25px;
+                width: 95%;
+            }
+            .header h1 {
+                font-size: 2.2em;
+            }
+            .status-bar {
+                justify-content: center;
+                text-align: center;
+            }
+        }
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .btn {
+                padding: 12px 18px;
+                font-size: 13px;
+            }
+            .title-input {
+                padding: 12px 15px;
+                font-size: 15px;
+            }
+            .theme-select {
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+        }
+
+        /* Loading animation for buttons/actions */
+        .loading-indicator {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body data-theme="dark"> <!-- Dark theme by default -->
+    <div class="container">
+        <div class="header">
+            <h1>⚡ CodeNotes</h1>
+            <div class="controls">
+                <div class="input-group">
+                    <label for="noteTitle">📝 Название файла (для определения языка)</label>
+                    <input type="text" id="noteTitle" class="title-input" placeholder="например, script.js или README.md">
+                </div>
+                
+                <div class="theme-toggle">
+                    <label for="themeSelect">🎨 Тема редактора:</label>
+                    <select id="themeSelect" class="theme-select">
+                        <option value="material-darker">Material Dark</option>
+                        <option value="monokai">Monokai</option>
+                        <option value="dracula">Dracula</option>
+                        <option value="github">GitHub Light</option>
+                    </select>
+                </div>
+                
+                <button id="shareBtn" class="btn btn-primary">🔗 Поделиться</button>
+                <button id="previewBtn" class="btn btn-secondary" style="display: none;">👁️ Предпросмотр</button> <!-- Hidden initially -->
+                <button id="newNoteBtn" class="btn btn-secondary">📄 Новая заметка</button>
+            </div>
+            <div class="controls" style="margin-top: 15px; gap: 10px;">
+                 <button id="exportBtn" class="btn btn-secondary">💾 Экспорт</button>
+                 <label for="importFile" class="btn btn-secondary" style="cursor: pointer;">📤 Импорт
+                    <input type="file" id="importFile" accept=".txt,.js,.py,.html,.css,.md,.json,.*" style="display: none;">
+                 </label>
+                 <button id="formatCodeBtn" class="btn btn-secondary">💅 Формат</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="editor-header">
+                <div class="language-info">
+                    <span>🔤 Язык:</span>
+                    <span id="languageBadge" class="language-badge">Определение...</span>
+                </div>
+                <div id="charCounter" class="char-counter">
+                    <span id="charCount">0</span> / <span id="charLimit">150</span> символов
+                </div>
+            </div>
+
+            <div id="editorContainer" class="editor-container syntax-highlight">
+                <textarea id="codeEditor">// Добро пожаловать в CodeNotes!
+// Введите сюда свой код или текст.
+// Название файла (например, main.py или style.css) поможет определить язык.
+// Используйте Ctrl+S (Cmd+S) чтобы поделиться, Ctrl+N для новой заметки.
+
+function greet(name) {
+  const message = `Привет, ${name}! Готовы кодить?`;
+  console.log(message);
+  return message;
+}
+
+// Пример Markdown:
+// # Заголовок
+// * Курсив
+// ** Жирный **
+// [Ссылка](https://example.com)
+</textarea>
+            </div>
+
+            <div id="previewContainer" class="preview-container">
+                <div id="previewContent" class="preview-content"></div>
+            </div>
+
+            <div class="status-bar">
+                <div>
+                    <span id="wordCount">0 слов</span> • 
+                    <span id="lineCount">0 строк</span> •
+                    <span id="fileSize">0 B</span>
+                </div>
+                <div id="autosaveStatus">
+                    <span>Автосохранение через: <span id="autosaveTimer">30</span>с</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="shareModal" class="modal"> <!-- Initially hidden -->
+        <div class="modal-content">
+            <span id="closeModalBtn" class="close">×</span>
+            <h2>🔗 Поделиться заметкой</h2>
+            <p>Эта уникальная ссылка содержит все данные вашей заметки. Скопируйте и поделитесь ей:</p>
+            <input type="text" id="shareUrl" class="url-input" readonly>
+            <button id="copyUrlBtn" class="btn btn-primary copy-btn">📋 Копировать ссылку</button>
+        </div>
+    </div>
+
+    <div id="notification" class="notification">Сообщение</div> <!-- Initially hidden and empty -->
+
+    <!-- External Libraries -->
+    <!-- CodeMirror Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <!-- CodeMirror Modes (Syntax Highlighting) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script> <!-- For HTML -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/php/php.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/rust/rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script> <!-- For C, C++, Java, C# -->
+    <!-- CodeMirror Addons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.css">
+
+
+    <!-- Compression Library (Pako for zlib) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <!-- Markdown Rendering Library (Marked.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        // 🚀 CodeNotes - Современный редактор с подсветкой синтаксиса (v1.5)
+        // ~1000+ строк JS для полнофункционального веб-приложения
+
+        // -------------------------------------------
+        // SECTION: Global Variables and Configuration
+        // -------------------------------------------
+        let editor; // CodeMirror instance
+        let currentLanguage = 'javascript'; // Default language
+        const CHAR_LIMIT = 15000; // Increased character limit for practical use, was 150
+        let isPreviewMode = false; // Tracks if Markdown preview is active
+        let autoSaveIntervalId;
+        const AUTOSAVE_INTERVAL = 30000; // 30 seconds
+        let lastSavedState = { title: '', content: '', language: '' }; // For in-memory autosave
+
+        // DOM Element References
+        const noteTitleInput = document.getElementById('noteTitle');
+        const codeEditorTextarea = document.getElementById('codeEditor');
+        const languageBadge = document.getElementById('languageBadge');
+        const charCountSpan = document.getElementById('charCount');
+        const charLimitSpan = document.getElementById('charLimit');
+        const charCounterDiv = document.getElementById('charCounter');
+        const shareBtn = document.getElementById('shareBtn');
+        const previewBtn = document.getElementById('previewBtn');
+        const newNoteBtn = document.getElementById('newNoteBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const importFileInput = document.getElementById('importFile');
+        const formatCodeBtn = document.getElementById('formatCodeBtn');
+        const themeSelect = document.getElementById('themeSelect');
+        const editorContainer = document.getElementById('editorContainer');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewContent = document.getElementById('previewContent');
+        const shareModal = document.getElementById('shareModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const shareUrlInput = document.getElementById('shareUrl');
+        const copyUrlBtn = document.getElementById('copyUrlBtn');
+        const notificationDiv = document.getElementById('notification');
+        const wordCountSpan = document.getElementById('wordCount');
+        const lineCountSpan = document.getElementById('lineCount');
+        const fileSizeSpan = document.getElementById('fileSize');
+        const autosaveTimerSpan = document.getElementById('autosaveTimer');
+        const autosaveStatusDiv = document.getElementById('autosaveStatus');
+
+        // Language Mapping: extension -> CodeMirror mode
+        const languageMap = {
+            'js': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript', 'jsx': 'javascript',
+            'ts': 'text/typescript', 'tsx': 'text/typescript-jsx',
+            'py': 'python', 'pyw': 'python', 'pyc': 'python', 'pyd': 'python',
+            'css': 'css', 'scss': 'text/x-scss', 'sass': 'text/x-sass', 'less': 'text/x-less',
+            'html': 'xml', 'htm': 'xml', 'xhtml': 'xml', 'svg': 'xml',
+            'md': 'markdown', 'markdown': 'markdown', 'mkd': 'markdown',
+            'sql': 'sql', 'mysql': 'sql', 'pgsql': 'sql', 'sqlite': 'sql',
+            'php': 'php', 'phtml': 'php',
+            'sh': 'shell', 'bash': 'shell', 'zsh': 'shell', 'fish': 'shell', 'ksh': 'shell',
+            'yml': 'yaml', 'yaml': 'yaml',
+            'go': 'go',
+            'rs': 'rust',
+            'c': 'text/x-csrc', 'cpp': 'text/x-c++src', 'cc': 'text/x-c++src', 'cxx': 'text/x-c++src',
+            'h': 'text/x-csrc', 'hpp': 'text/x-c++src', 'hh': 'text/x-c++src',
+            'java': 'text/x-java', 'jar': 'text/x-java',
+            'cs': 'text/x-csharp',
+            'json': { name: 'javascript', json: true }, 'jsonc': { name: 'javascript', json: true },
+            'xml': 'xml',
+            'rb': 'ruby',
+            'swift': 'swift',
+            'kt': 'text/x-kotlin', 'kts': 'text/x-kotlin',
+            'lua': 'lua',
+            'pl': 'perl',
+            'r': 'r',
+            'dart': 'dart',
+            'conf': 'nginx', // Example for config files
+            'ini': 'properties',
+            'toml': 'toml',
+            'dockerfile': 'dockerfile',
+            'txt': 'text/plain', 'log': 'text/plain', '': 'text/plain' // Default fallback
+        };
+
+        // Enhanced Language Detection Patterns (keywords and regex)
+        const languagePatterns = {
+            javascript: {
+                keywords: ['function', 'const ', 'let ', 'var ', '=>', 'async ', 'await ', 'import ', 'export ', 'class ', 'this.', 'document.', 'window.'],
+                patterns: [/console\.(log|error|warn|info|debug)\s*\(/, /\brequire\s*\(/, /\bimport\s+.*\s+from\s+/, /\bexport\s+(default\s+)?(function|const|let|var|class)/, /\$\{\s*.*?\s*\}/],
+                priority: 10
+            },
+            python: {
+                keywords: ['def ', 'import ', 'from ', 'print(', 'if __name__', 'class ', 'self.', 'lambda '],
+                patterns: [/def\s+\w+\s*\(.*?\):/, /import\s+\w+/, /print\s*\(.*\)/, /class\s+\w+\s*\(.*?\):/, /@\w+/],
+                priority: 10
+            },
+            html: { // Matches HTML structure more than just 'xml' mode
+                keywords: ['<!DOCTYPE html>', '<html', '<head', '<body', '<div', '<span', '<p>', '<a href'],
+                patterns: [/<([a-z][a-z0-9]*)\b[^>]*>/i, /<\/[a-z][a-z0-9]*>/i, /<!--.*?-->/],
+                mode: 'xml', // Explicitly use 'xml' for CodeMirror despite 'html' key here
+                priority: 9 
+            },
+            css: {
+                keywords: ['color:', 'background:', 'font-size:', 'display:', 'position:', 'margin:', 'padding:', '@media', '@keyframes'],
+                patterns: [/#[a-zA-Z0-9_-]+\s*\{/, /\.[a-zA-Z0-9_-]+\s*\{/, /[a-zA-Z-]+\s*:\s*[^;]+;/],
+                priority: 9
+            },
+            markdown: {
+                keywords: ['# ', '## ', '### ', '* ', '- ', '_', '**', '`', '[', ']('],
+                patterns: [/^#{1,6}\s+.*/, /^\s*[-*+]\s+.*/, /^\s*\d+\.\s+.*/, /\[.*?\]\(.*?\)/, /`[^`]+`/],
+                priority: 10
+            },
+            sql: {
+                keywords: ['SELECT ', 'FROM ', 'WHERE ', 'INSERT INTO ', 'UPDATE ', 'DELETE FROM ', 'CREATE TABLE ', 'ALTER TABLE ', 'DROP TABLE ', 'JOIN ', 'GROUP BY ', 'ORDER BY '],
+                patterns: [/\b(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE)\b/i],
+                priority: 8
+            },
+            php: {
+                keywords: ['<?php', 'echo ', 'function ', 'class ', '$', '->', 'namespace ', 'use '],
+                patterns: [/<\?php/, /\$\w+/, /function\s+\w+\s*\(.*?\)/, /class\s+\w+\s*\{/],
+                priority: 7
+            },
+            shell: {
+                keywords: ['#!/bin/', 'echo ', 'cd ', 'ls ', 'grep ', 'awk ', 'sed ', 'export ', 'if [', 'fi', 'for '],
+                patterns: [/^#!\/(bin|usr\/bin)\/(bash|sh|zsh|ksh)/, /\b(echo|cat|ls|cd|mkdir|rm|cp|mv|sudo|apt|yum|docker|git|npm|yarn)\b/],
+                priority: 7
+            },
+            yaml: {
+                keywords: [': ', '  - ', '---'],
+                patterns: [/^\s*[\w.-]+:\s*(".*?"|'.*?'|[^#\s]+)/, /^\s*-\s+/],
+                priority: 8
+            },
+            json: { // For content that is clearly JSON
+                patterns: [/^\{[\s\S]*\}$/, /^\s*"[^"]+"\s*:\s*(".*?"|\d+|true|false|null|\[.*?\]|\{.*?\})/],
+                mode: { name: 'javascript', json: true },
+                priority: 10
+            },
+            // Add more language patterns here for better auto-detection
+            c: { keywords: ['#include', 'int main', 'printf', 'scanf', 'struct', 'typedef', 'void', 'char', 'int', 'float', 'double'], patterns: [/#include\s*<.*?>/, /\b(void|int|char|float|double)\s+\w+\s*\(.*?\);?/], mode: 'text/x-csrc', priority: 6 },
+            cpp: { keywords: ['#include', 'std::', 'cout', 'cin', 'class', 'public:', 'private:', 'protected:', 'virtual', 'template'], patterns: [/#include\s*<iostream>/, /\bstd::\w+/, /class\s+\w+\s*\{/], mode: 'text/x-c++src', priority: 7 },
+            java: { keywords: ['public class', 'static void main', 'System.out.println', 'import java.', 'new ', 'try {', 'catch ('], patterns: [/public\s+class\s+\w+/, /System\.out\.print(ln)?\s*\(.*?\);/, /import\s+java\.\w+\.\*;/], mode: 'text/x-java', priority: 7 },
+            rust: { keywords: ['fn ', 'let ', 'mut ', 'struct ', 'enum ', 'impl ', 'trait ', 'use ', 'mod ', 'pub '], patterns: [/\bfn\s+\w+</, /\blet\s+(mut\s+)?\w+:/, /\b(struct|enum|trait|impl)\b/], priority: 8 },
+            go: { keywords: ['package ', 'import (', 'func ', 'var ', 'const ', 'type ', 'struct {', 'interface {', 'go ', 'chan '], patterns: [/\bpackage\s+\w+/, /\bfunc\s+\w+\s*\(.*?\)/, /\b(var|const|type)\s+\w+/], priority: 8 },
+
+        };
+
+
+        // -------------------------------------------
+        // SECTION: Initialization
+        // -------------------------------------------
+
+        /**
+         * Initializes the application when the DOM is fully loaded.
+         * Sets up CodeMirror, event listeners, loads data from URL, and starts autosave.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("🚀 CodeNotes Initializing...");
+            try {
+                initCodeMirror(codeEditorTextarea.value, currentLanguage);
+                setupEventListeners();
+                loadDataFromUrl(); // This will also trigger language detection and UI updates
+                applyTheme(themeSelect.value); // Apply default theme from select
+                updateCharCount(); // Initial char count
+                updateStatusBar(); // Initial status bar update
+                startAutoSave();
+                showNotification("👋 Добро пожаловать в CodeNotes!", "success", 2000);
+                charLimitSpan.textContent = CHAR_LIMIT.toLocaleString();
+                
+                // Set initial CodeMirror theme explicitly if CSS doesn't pick it up fully
+                if (editor) {
+                    editor.setOption("theme", themeSelect.value);
+                }
+            } catch (error) {
+                console.error("Error during initialization:", error);
+                showNotification("Ошибка инициализации приложения.", "error");
+            }
+        });
+
+        /**
+         * Initializes the CodeMirror editor instance.
+         * @param {string} initialContent - The initial content for the editor.
+         * @param {string} language - The initial language mode for CodeMirror.
+         */
+        function initCodeMirror(initialContent, language) {
+            console.log(`Initializing CodeMirror with language: ${language}`);
+            const editorMode = getCodeMirrorMode(language);
+            editor = CodeMirror.fromTextArea(codeEditorTextarea, {
+                lineNumbers: true,
+                mode: editorMode,
+                theme: themeSelect.value, // Start with the selected theme
+                matchBrackets: true,
+                autoCloseBrackets: true,
+                styleActiveLine: true,
+                indentUnit: 2, // Default to 2 spaces, can be made configurable
+                tabSize: 2,
+                lineWrapping: true, // Wrap long lines
+                extraKeys: {
+                    "Ctrl-Space": "autocomplete", // Basic autocomplete trigger
+                    "Ctrl-S": handleShareShortcut,
+                    "Cmd-S": handleShareShortcut,
+                    "Ctrl-N": handleNewNoteShortcut,
+                    "Cmd-N": handleNewNoteShortcut,
+                    "Ctrl-F": "findPersistent", // Built-in find
+                    "Cmd-F": "findPersistent",
+                    "Ctrl-/": "toggleComment", // Comment/uncomment lines
+                    "Cmd-/": "toggleComment",
+                    "Tab": (cm) => { // Smart tab: indent or insert spaces
+                        if (cm.somethingSelected()) {
+                            cm.indentSelection("add");
+                        } else {
+                            cm.replaceSelection(Array(cm.getOption("indentUnit") + 1).join(" "), "end", "+input");
+                        }
+                    }
+                }
+            });
+
+            editor.setValue(initialContent || "");
+            editor.on('change', handleEditorChange);
+            editor.on('focus', () => editorContainer.classList.add('focused'));
+            editor.on('blur', () => editorContainer.classList.remove('focused'));
+
+            // Ensure editor refreshes its layout, sometimes needed after initial setup
+            setTimeout(() => editor.refresh(), 100); 
+            console.log("CodeMirror initialized.");
+        }
+
+        /**
+         * Sets up all necessary event listeners for UI elements.
+         */
+        function setupEventListeners() {
+            noteTitleInput.addEventListener('input', handleTitleChange);
+            noteTitleInput.addEventListener('paste', handleTitleChange); // Also detect on paste
+
+            shareBtn.addEventListener('click', generateShareLink);
+            previewBtn.addEventListener('click', togglePreviewMode);
+            newNoteBtn.addEventListener('click', handleNewNote);
+            exportBtn.addEventListener('click', exportNote);
+            importFileInput.addEventListener('change', importNote);
+            formatCodeBtn.addEventListener('click', formatCode);
+
+            themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
+
+            closeModalBtn.addEventListener('click', hideShareModal);
+            copyUrlBtn.addEventListener('click', copyShareUrl);
+            shareModal.addEventListener('click', (e) => { // Close modal on backdrop click
+                if (e.target === shareModal) hideShareModal();
+            });
+
+            // Hotkeys not handled by CodeMirror extraKeys
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && shareModal.classList.contains('show')) {
+                    hideShareModal();
+                }
+            });
+            console.log("Event listeners configured.");
+        }
+
+
+        // -------------------------------------------
+        // SECTION: Core Editor and Language Logic
+        // -------------------------------------------
+
+        /**
+         * Handles changes in the CodeMirror editor.
+         * Triggers character count update, language detection, and autosave reset.
+         */
+        function handleEditorChange() {
+            const content = editor.getValue();
+            updateCharCount(content.length);
+            detectLanguageAndUpdateUI(content, noteTitleInput.value);
+            updateStatusBar();
+            resetAutoSaveTimer();
+        }
+
+        /**
+         * Handles changes in the note title input field.
+         * Triggers language detection based on new filename.
+         */
+        function handleTitleChange() {
+            const filename = noteTitleInput.value;
+            detectLanguageAndUpdateUI(editor.getValue(), filename);
+            resetAutoSaveTimer();
+        }
+
+        /**
+         * Converts a simple language name (e.g., 'javascript') to a CodeMirror mode object or string.
+         * @param {string} lang - The language name.
+         * @returns {string|object} The CodeMirror mode.
+         */
+        function getCodeMirrorMode(lang) {
+            if (!lang) return 'text/plain';
+            const mappedLang = languageMap[lang.toLowerCase()] || lang.toLowerCase();
+            
+            // Handle cases where languageMap value is an object (e.g., for JSON)
+            if (typeof mappedLang === 'object' && mappedLang.name) {
+                return mappedLang;
+            }
+            if (typeof mappedLang === 'string') {
+                 // Common mappings for clike languages
+                if (['c', 'cpp', 'java', 'cs', 'objectivec', 'scala', 'kotlin'].includes(mappedLang)) {
+                    const mimeTypes = {
+                        c: 'text/x-csrc',
+                        cpp: 'text/x-c++src',
+                        java: 'text/x-java',
+                        cs: 'text/x-csharp',
+                        objectivec: 'text/x-objectivec',
+                        scala: 'text/x-scala',
+                        kotlin: 'text/x-kotlin'
+                    };
+                    return mimeTypes[mappedLang] || 'clike';
+                }
+                return mappedLang;
+            }
+            return 'text/plain'; // Fallback
+        }
+
+        /**
+         * Updates the CodeMirror editor's language mode and the UI badge.
+         * @param {string} lang - The new language to set.
+         */
+        function updateEditorLanguage(lang) {
+            if (!editor || currentLanguage === lang) return;
+
+            console.log(`Updating editor language to: ${lang}`);
+            currentLanguage = lang;
+            const editorMode = getCodeMirrorMode(lang);
+            
+            try {
+                editor.setOption('mode', editorMode);
+                languageBadge.textContent = lang.toUpperCase();
+                // Show/hide Markdown preview button
+                previewBtn.style.display = (lang === 'markdown') ? 'inline-flex' : 'none';
+                if (lang !== 'markdown' && isPreviewMode) {
+                    togglePreviewMode(); // Exit preview if language changes from MD
+                }
+            } catch (error) {
+                console.error(`Error setting CodeMirror mode to ${editorMode}:`, error);
+                languageBadge.textContent = "Ошибка";
+                showNotification(`Не удалось загрузить подсветку для ${lang}.`, "error");
+            }
+        }
+
+        /**
+         * Detects the programming language from content and filename.
+         * @param {string} content - The code/text content.
+         * @param {string} filename - The filename (optional).
+         * @returns {string} The detected language (e.g., 'javascript').
+         */
+        function detectLanguage(content, filename = '') {
+            // 1. Try by filename extension
+            if (filename) {
+                const extension = filename.split('.').pop().toLowerCase();
+                if (languageMap[extension]) {
+                    // If languageMap[extension] is an object (like for JSON), return the extension itself
+                    // so getCodeMirrorMode can handle it. Otherwise, return the mapped value.
+                    return typeof languageMap[extension] === 'object' ? extension : (languageMap[extension] || 'text/plain');
+                }
+            }
+
+            // 2. Try by content patterns (more sophisticated)
+            let bestMatch = { lang: 'text/plain', score: 0, priority: 0 };
+            const contentSample = content.substring(0, 2000); // Analyze first 2KB
+
+            for (const lang in languagePatterns) {
+                const { keywords, patterns, priority = 1, mode } = languagePatterns[lang];
+                let currentScore = 0;
+
+                if (keywords) {
+                    keywords.forEach(kw => {
+                        if (contentSample.toLowerCase().includes(kw.toLowerCase())) currentScore += 2;
+                    });
+                }
+                if (patterns) {
+                    patterns.forEach(regex => {
+                        if (regex.test(contentSample)) currentScore += 5;
+                    });
+                }
+                
+                // Compare with current best match
+                if (currentScore > 0) {
+                    if (currentScore * priority > bestMatch.score * bestMatch.priority) {
+                        bestMatch = { lang: mode || lang, score: currentScore, priority: priority };
+                    } else if (currentScore * priority === bestMatch.score * bestMatch.priority && priority > bestMatch.priority) {
+                        // If scores are equal, prefer higher priority
+                        bestMatch = { lang: mode || lang, score: currentScore, priority: priority };
+                    }
+                }
+            }
+            
+            // console.log(`Detected language: ${bestMatch.lang} with score ${bestMatch.score} and priority ${bestMatch.priority}`);
+            return bestMatch.lang !== 'text/plain' ? bestMatch.lang : (filename ? 'text/plain' : 'javascript'); // Default to JS if no filename and no strong match
+        }
+        
+        /**
+         * Combines language detection with UI update.
+         * @param {string} content - The code/text content.
+         * @param {string} filename - The filename (optional).
+         */
+        function detectLanguageAndUpdateUI(content, filename) {
+            const detectedLang = detectLanguage(content, filename);
+            if (detectedLang !== currentLanguage) {
+                updateEditorLanguage(detectedLang);
+            }
+        }
+
+
+        // -------------------------------------------
+        // SECTION: Character Limit and Counter
+        // -------------------------------------------
+
+        /**
+         * Updates the character count display and applies warning/error styles.
+         * @param {number} count - The current character count. If undefined, gets from editor.
+         */
+        function updateCharCount(count) {
+            const currentLength = (typeof count === 'number') ? count : (editor ? editor.getValue().length : 0);
+            charCountSpan.textContent = currentLength.toLocaleString();
+            
+            charCounterDiv.classList.remove('warning', 'error');
+            if (currentLength > CHAR_LIMIT) {
+                charCounterDiv.classList.add('error');
+                if (editor) {
+                     // Truncate content if strictly enforcing
+                    // editor.setValue(editor.getValue().substring(0, CHAR_LIMIT));
+                    // editor.setCursor(editor.posFromIndex(CHAR_LIMIT));
+                    // For now, just a strong visual warning
+                    showNotification(`Превышен лимит символов (${CHAR_LIMIT.toLocaleString()})!`, "error", 1500);
+                }
+            } else if (currentLength > CHAR_LIMIT * 0.9) {
+                charCounterDiv.classList.add('warning');
+            }
+        }
+
+
+        // -------------------------------------------
+        // SECTION: Markdown Preview
+        // -------------------------------------------
+
+        /**
+         * Toggles between the editor and Markdown preview mode.
+         */
+        function togglePreviewMode() {
+            if (currentLanguage !== 'markdown') {
+                showNotification("Предпросмотр доступен только для Markdown.", "warning");
+                return;
+            }
+
+            isPreviewMode = !isPreviewMode;
+            if (isPreviewMode) {
+                renderMarkdown();
+                editorContainer.style.display = 'none';
+                previewContainer.style.display = 'flex'; // Use flex for consistency if needed
+                previewContainer.classList.add('active');
+                previewBtn.textContent = '✏️ Редактор';
+                previewBtn.classList.remove('btn-secondary');
+                previewBtn.classList.add('btn-primary'); // Make it primary when active
+            } else {
+                editorContainer.style.display = 'flex'; // Use flex for consistency if needed
+                previewContainer.style.display = 'none';
+                previewContainer.classList.remove('active');
+                previewBtn.textContent = '👁️ Предпросмотр';
+                previewBtn.classList.remove('btn-primary');
+                previewBtn.classList.add('btn-secondary');
+                editor.refresh(); // Important to refresh CodeMirror after display change
+            }
+            console.log(`Markdown preview mode: ${isPreviewMode ? 'ON' : 'OFF'}`);
+        }
+
+        /**
+         * Renders Markdown content from the editor into the preview pane.
+         * Uses Marked.js library.
+         */
+        function renderMarkdown() {
+            if (!editor || typeof marked === 'undefined') {
+                previewContent.innerHTML = '<p>Ошибка: Библиотека для Markdown (marked.js) не загружена.</p>';
+                return;
+            }
+            const mdContent = editor.getValue();
+            try {
+                // Configure marked for GFM and syntax highlighting (basic)
+                marked.setOptions({
+                    renderer: new marked.Renderer(),
+                    gfm: true,
+                    tables: true,
+                    breaks: false,
+                    pedantic: false,
+                    sanitize: false, // Be careful with this in a real public app, consider DOMPurify
+                    smartLists: true,
+                    smartypants: false,
+                    // Basic highlight, for full CM-like highlight, would need to integrate CM or another lib
+                    highlight: function(code, lang) {
+                        // For simplicity, not using CodeMirror's highlighter here,
+                        // as it can be complex to run CM on many small code blocks.
+                        // Marked.js default highlighter is often sufficient for preview.
+                        // Or, one could use highlight.js if loaded.
+                        const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                        return hljs.highlight(code, { language }).value;
+                    }
+                });
+                previewContent.innerHTML = marked.parse(mdContent);
+            } catch (error) {
+                console.error("Markdown rendering error:", error);
+                previewContent.innerHTML = `<p style="color:var(--error);">Ошибка при обработке Markdown: ${error.message}</p>`;
+                showNotification("Ошибка рендеринга Markdown.", "error");
+            }
+        }
+
+
+        // -------------------------------------------
+        // SECTION: Sharing via URL (Compression/Decompression)
+        // -------------------------------------------
+
+        /**
+         * Generates a shareable link by compressing note data into the URL hash.
+         */
+        async function generateShareLink() {
+            if (!editor) return;
+            
+            const shareBtnContent = shareBtn.innerHTML;
+            shareBtn.innerHTML = 'Генерация... <span class="loading-indicator"></span>';
+            shareBtn.disabled = true;
+
+            try {
+                const title = noteTitleInput.value.trim();
+                const content = editor.getValue();
+                
+                if (!content.trim()) {
+                    showNotification("Нечего сохранять. Заметка пуста.", "warning");
+                    return;
+                }
+
+                const dataToShare = {
+                    t: title, // title
+                    c: content, // content
+                    l: currentLanguage, // language
+                    v: '1' // version for future compatibility
+                };
+
+                const jsonString = JSON.stringify(dataToShare);
+                // Compress using pako (zlib)
+                const compressed = pako.deflate(jsonString, { to: 'string' });
+                // Encode to Base64 and make URL-safe
+                const base64Encoded = btoa(compressed);
+                const urlSafeBase64 = base64UrlEncode(base64Encoded);
+
+                const shareUrl = `${location.origin}${location.pathname}#${urlSafeBase64}`;
+                
+                shareUrlInput.value = shareUrl;
+                showShareModal();
+                showNotification("Ссылка готова!", "success");
+
+            } catch (error) {
+                console.error("Error generating share link:", error);
+                showNotification("Ошибка при создании ссылки.", "error");
+            } finally {
+                shareBtn.innerHTML = shareBtnContent;
+                shareBtn.disabled = false;
+            }
+        }
+        
+        /**
+         * Encodes a Base64 string to be URL-safe.
+         * @param {string} str - The Base64 string.
+         * @returns {string} URL-safe Base64 string.
+         */
+        function base64UrlEncode(str) {
+            return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        /**
+         * Decodes a URL-safe Base64 string back to standard Base64.
+         * @param {string} str - The URL-safe Base64 string.
+         * @returns {string} Standard Base64 string.
+         */
+        function base64UrlDecode(str) {
+            str = str.replace(/-/g, '+').replace(/_/g, '/');
+            while (str.length % 4) {
+                str += '=';
+            }
+            return str;
+        }
+
+        /**
+         * Loads note data from the URL hash if present.
+         */
+        function loadDataFromUrl() {
+            if (location.hash.startsWith('#')) {
+                const encodedData = location.hash.substring(1);
+                if (!encodedData) return;
+
+                console.log("Loading data from URL hash...");
+                try {
+                    const base64Decoded = base64UrlDecode(encodedData);
+                    const decompressedString = atob(base64Decoded);
+                    // Decompress using pako (zlib)
+                    const jsonString = pako.inflate(decompressedString, { to: 'string' });
+                    const data = JSON.parse(jsonString);
+
+                    if (data.c) { // c: content
+                        editor.setValue(data.c);
+                    }
+                    if (data.t) { // t: title
+                        noteTitleInput.value = data.t;
+                    }
+                    if (data.l) { // l: language
+                        updateEditorLanguage(data.l);
+                    } else { // Fallback if language not in shared data
+                        detectLanguageAndUpdateUI(data.c || "", data.t || "");
+                    }
+                    
+                    // Clear the hash to prevent re-processing on refresh if not intended
+                    // history.replaceState(null, null, ' '); // Or location.pathname
+                    // Let's keep the hash for now, so the link is truly persistent until changed
+
+                    showNotification("Заметка загружена из ссылки!", "success");
+                    updateCharCount();
+                    updateStatusBar();
+
+                } catch (error) {
+                    console.error("Error loading data from URL:", error);
+                    showNotification("Ошибка при загрузке данных из ссылки. Возможно, она повреждена.", "error");
+                    // Clear bad hash
+                    history.replaceState(null, null, location.pathname);
+                }
+            } else {
+                 // No hash, try to load default or from a previous "autosave" (if implemented with localStorage)
+                 // For now, it just uses the default textarea content
+                 detectLanguageAndUpdateUI(editor.getValue(), noteTitleInput.value);
+            }
+        }
+
+        /**
+         * Shows the share modal.
+         */
+        function showShareModal() {
+            shareModal.classList.add('show');
+        }
+
+        /**
+         * Hides the share modal.
+         */
+        function hideShareModal() {
+            shareModal.classList.remove('show');
+        }
+
+        /**
+         * Copies the generated share URL to the clipboard.
+         */
+        async function copyShareUrl() {
+            try {
+                await navigator.clipboard.writeText(shareUrlInput.value);
+                showNotification("Ссылка скопирована в буфер обмена!", "success");
+                // Optional: change button text temporarily
+                const originalText = copyUrlBtn.textContent;
+                copyUrlBtn.textContent = "✅ Скопировано!";
+                setTimeout(() => { copyUrlBtn.textContent = originalText; }, 2000);
+            } catch (err) {
+                console.error('Failed to copy URL: ', err);
+                showNotification("Не удалось скопировать. Пожалуйста, скопируйте вручную.", "error");
+                shareUrlInput.select(); // Select for manual copy
+            }
+        }
+
+        // -------------------------------------------
+        // SECTION: Theme Management
+        // -------------------------------------------
+
+        /**
+         * Applies the selected theme to the page and CodeMirror editor.
+         * @param {string} themeName - The name of the theme (e.g., 'material-darker', 'github').
+         */
+        function applyTheme(themeName) {
+            console.log(`Applying theme: ${themeName}`);
+            // For overall page theme (dark/light based on CodeMirror theme type)
+            // This example assumes 'github' is light, others are dark.
+            if (themeName.toLowerCase().includes('light') || themeName.toLowerCase().includes('github')) {
+                document.body.setAttribute('data-theme', 'light');
+            } else {
+                document.body.setAttribute('data-theme', 'dark');
+            }
+
+            // Apply theme to CodeMirror
+            if (editor) {
+                editor.setOption('theme', themeName);
+                editor.refresh(); // Refresh to ensure theme applies correctly
+            }
+        }
+
+
+        // -------------------------------------------
+        // SECTION: UI Helper Functions
+        // -------------------------------------------
+
+        /**
+         * Displays a notification message.
+         * @param {string} message - The message to display.
+         * @param {'success'|'warning'|'error'} type - The type of notification.
+         * @param {number} duration - How long to show the notification (ms).
+         */
+        function showNotification(message, type = 'success', duration = 3000) {
+            notificationDiv.textContent = message;
+            notificationDiv.className = 'notification'; // Reset classes
+            notificationDiv.classList.add(type);
+            notificationDiv.classList.add('show');
+
+            setTimeout(() => {
+                notificationDiv.classList.remove('show');
+            }, duration);
+        }
+
+        /**
+         * Updates the status bar with word count, line count, and file size.
+         */
+        function updateStatusBar() {
+            if (!editor) return;
+            const content = editor.getValue();
+            const lines = editor.lineCount();
+            const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+            const fileSize = new TextEncoder().encode(content).length; // Size in bytes
+
+            wordCountSpan.textContent = `${words.toLocaleString()} слов`;
+            lineCountSpan.textContent = `${lines.toLocaleString()} строк`;
+            fileSizeSpan.textContent = formatBytes(fileSize);
+        }
+
+        /**
+         * Formats bytes into a human-readable string (KB, MB, etc.).
+         * @param {number} bytes - The number of bytes.
+         * @param {number} [decimals=2] - Number of decimal places.
+         * @returns {string} Formatted file size.
+         */
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+
+        // -------------------------------------------
+        // SECTION: Additional Features
+        // -------------------------------------------
+
+        /**
+         * Handles the "New Note" action, clearing the editor and title.
+         */
+        function handleNewNote() {
+            if (isPreviewMode) togglePreviewMode(); // Exit preview if active
+
+            noteTitleInput.value = '';
+            if (editor) editor.setValue('// Новая заметка создана!\n');
+            currentLanguage = 'javascript'; // Reset to default
+            updateEditorLanguage(currentLanguage); // Apply default language
+            updateCharCount(0);
+            updateStatusBar();
+            // Clear URL hash
+            history.pushState("", document.title, window.location.pathname + window.location.search);
+            showNotification("Создана новая заметка.", "success");
+            noteTitleInput.focus();
+            resetAutoSaveTimer();
+        }
+
+        /**
+         * Handles Ctrl+S / Cmd+S shortcut for sharing.
+         */
+        function handleShareShortcut() {
+            generateShareLink();
+            return false; // Prevent browser's default save action
+        }
+        
+        /**
+         * Handles Ctrl+N / Cmd+N shortcut for new note.
+         */
+        function handleNewNoteShortcut() {
+            handleNewNote();
+            return false; // Prevent browser's default new window action
+        }
+
+
+        /**
+         * Starts the autosave interval.
+         */
+        function startAutoSave() {
+            if (autoSaveIntervalId) clearInterval(autoSaveIntervalId); // Clear existing interval
+
+            let countdown = AUTOSAVE_INTERVAL / 1000;
+            autosaveTimerSpan.textContent = countdown;
+
+            autoSaveIntervalId = setInterval(() => {
+                countdown--;
+                if (countdown <= 0) {
+                    performAutoSave();
+                    countdown = AUTOSAVE_INTERVAL / 1000;
+                }
+                autosaveTimerSpan.textContent = countdown;
+            }, 1000);
+            console.log("Autosave interval started.");
+        }
+
+        /**
+         * Resets the autosave timer (e.g., after user interaction).
+         */
+        function resetAutoSaveTimer() {
+            clearInterval(autoSaveIntervalId);
+            startAutoSave();
+        }
+
+        /**
+         * Performs the "autosave" action.
+         * Saves current state to an in-memory variable as per prompt.
+         */
+        function performAutoSave() {
+            if (!editor) return;
+
+            const currentContent = editor.getValue();
+            const currentTitle = noteTitleInput.value;
+            const currentLang = currentLanguage;
+
+            if (currentContent !== lastSavedState.content || 
+                currentTitle !== lastSavedState.title || 
+                currentLang !== lastSavedState.language) {
+                
+                lastSavedState = {
+                    title: currentTitle,
+                    content: currentContent,
+                    language: currentLang
+                };
+                console.log("Autosaved to memory:", new Date().toLocaleTimeString(), lastSavedState);
+                autosaveStatusDiv.innerHTML = `<span>💾 Сохранено! <small>(${new Date().toLocaleTimeString()})</small></span>`;
+                setTimeout(() => {
+                    autosaveStatusDiv.innerHTML = `<span>Автосохранение через: <span id="autosaveTimer">${AUTOSAVE_INTERVAL/1000}</span>с</span>`;
+                    // Need to re-assign autosaveTimerSpan if its parent's innerHTML was changed.
+                    // This is a bit clunky, better to update specific span.
+                    const newTimerSpan = document.getElementById('autosaveTimer');
+                    if (newTimerSpan) autosaveTimerSpan = newTimerSpan; // Re-assign if needed. Simpler way is to keep spans separate.
+                }, 2000);
+            } else {
+                // console.log("Autosave: No changes detected.");
+            }
+        }
+
+        /**
+         * Exports the current note content as a file.
+         */
+        function exportNote() {
+            if (!editor) return;
+            const content = editor.getValue();
+            if (!content.trim()) {
+                showNotification("Нечего экспортировать. Заметка пуста.", "warning");
+                return;
+            }
+
+            let filename = noteTitleInput.value.trim();
+            if (!filename) {
+                // Generate a default filename if empty
+                const date = new Date();
+                const timestamp = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+                const ext = currentLanguage === 'text/plain' ? 'txt' : (Object.keys(languageMap).find(key => languageMap[key] === currentLanguage || (typeof languageMap[key] === 'object' && languageMap[key].name === currentLanguage)) || 'txt');
+                filename = `codenote_${timestamp}.${ext}`;
+            } else {
+                // Ensure filename has an extension based on current language if not already present
+                const parts = filename.split('.');
+                if (parts.length === 1 || !languageMap[parts.pop().toLowerCase()]) {
+                    const ext = Object.keys(languageMap).find(key => languageMap[key] === currentLanguage || (typeof languageMap[key] === 'object' && languageMap[key].name === currentLanguage)) || 'txt';
+                    filename = `${parts[0]}.${ext}`;
+                }
+            }
+
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotification(`Файл "${filename}" экспортирован.`, "success");
+        }
+
+        /**
+         * Imports a file content into the editor.
+         * @param {Event} event - The file input change event.
+         */
+        function importNote(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                if (editor) editor.setValue(content);
+                noteTitleInput.value = file.name; // Set title to filename
+                detectLanguageAndUpdateUI(content, file.name); // Detect language from new content and filename
+                updateCharCount();
+                updateStatusBar();
+                showNotification(`Файл "${file.name}" импортирован.`, "success");
+            };
+            reader.onerror = (e) => {
+                console.error("File reading error:", e);
+                showNotification("Ошибка при чтении файла.", "error");
+            };
+            reader.readAsText(file);
+            event.target.value = null; // Reset file input for subsequent uploads of the same file
+        }
+
+        /**
+         * Formats the code in the editor.
+         * Basic: re-indent selected lines or whole document.
+         * Advanced formatting would require a library like Prettier.
+         */
+        function formatCode() {
+            if (!editor) return;
+            try {
+                // CodeMirror's built-in re-indentation
+                const from = editor.getCursor("start");
+                const to = editor.getCursor("end");
+                if (editor.somethingSelected()) {
+                    editor.indentSelection("smart");
+                } else {
+                    // Re-indent the whole document
+                    for (let i = 0; i < editor.lineCount(); i++) {
+                        editor.indentLine(i, "smart");
+                    }
+                }
+                showNotification("Код отформатирован (базовое отступание).", "success");
+            } catch (error) {
+                console.error("Formatting error:", error);
+                showNotification("Ошибка форматирования кода.", "error");
+            }
+        }
+        
+        console.log("CodeNotes JS fully loaded. (~" + document.documentElement.innerHTML.split('\n').length + " lines of HTML, ~" + (()=>{ try{throw new Error()}catch(e){return e.stack.split('\n').length} })() + " lines of JS including this log)");
+
+    </script>
+</body>
+</html>
