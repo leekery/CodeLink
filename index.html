@@ -540,12 +540,12 @@
             <h1>⚡ CodeNotes</h1>
             <div class="controls">
                 <div class="input-group">
-                    <label for="noteTitle">📝 Название файла (для определения языка)</label>
-                    <input type="text" id="noteTitle" class="title-input" placeholder="например, script.js или README.md">
+                    <label for="noteTitle">📝 Название файла</label>
+                    <input type="text" id="noteTitle" class="title-input" placeholder="например README.md">
                 </div>
                 
                 <div class="theme-toggle">
-                    <label for="themeSelect">🎨 Тема редактора:</label>
+                    <label for="themeSelect"> Тема редактора:</label>
                     <select id="themeSelect" class="theme-select">
                         <option value="material-darker">Material Dark</option>
                         <option value="monokai">Monokai</option>
@@ -559,11 +559,11 @@
                 <button id="newNoteBtn" class="btn btn-secondary">📄 Новая заметка</button>
             </div>
             <div class="controls" style="margin-top: 15px; gap: 10px;">
-                 <button id="exportBtn" class="btn btn-secondary">💾 Экспорт</button>
-                 <label for="importFile" class="btn btn-secondary" style="cursor: pointer;">📤 Импорт
+                <button id="exportBtn" class="btn btn-secondary">💾 Экспорт</button>
+                <label for="importFile" class="btn btn-secondary" style="cursor: pointer;">📤 Импорт
                     <input type="file" id="importFile" accept=".txt,.js,.py,.html,.css,.md,.json,.*" style="display: none;">
-                 </label>
-                 <button id="formatCodeBtn" class="btn btn-secondary">💅 Формат</button>
+                </label>
+                <button id="formatCodeBtn" class="btn btn-secondary"> Формат</button>
             </div>
         </div>
 
@@ -1154,40 +1154,40 @@ function greet(name) {
                 const dataToShare = { t: title, c: content, l: currentLanguage, v: '1.1' }; // v for version
                 const jsonString = JSON.stringify(dataToShare);
                 const compressed = pako.deflate(jsonString, { to: 'string' });
-                const base64Encoded = btoa(compressed); // Standard Base64
+                const base64Encoded = btoa(compressed); 
                 const urlSafeBase64 = base64UrlEncode(base64Encoded);
 
                 longShareUrl = `${location.origin}${location.pathname}#${urlSafeBase64}`;
                 
-                // Try to shorten the URL
-                const isGdApiUrl = `https://is.gd/create.php?format=simple&url=${encodeURIComponent(longShareUrl)}`;
+                // Try to shorten the URL using format=json
+                const isGdApiUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(longShareUrl)}`;
                 
                 console.log("Attempting to shorten URL:", longShareUrl);
-                showNotification("Создаю короткую ссылку...", "success", 1500);
+                showNotification("Создаю короткую ссылку...", "success", 1500); // Temporary notification
 
                 const response = await fetch(isGdApiUrl);
-                if (response.ok) {
-                    const shortUrl = await response.text();
-                    if (shortUrl && (shortUrl.startsWith('http://is.gd/') || shortUrl.startsWith('https://is.gd/'))) {
-                        shareUrlInput.value = shortUrl;
-                        showNotification("Короткая ссылка создана!", "success");
-                    } else {
-                        console.warn("is.gd returned non-URL or error message:", shortUrl);
-                        shareUrlInput.value = longShareUrl; // Fallback to long URL
-                        showNotification("Не удалось сократить (ответ API). Используется полная ссылка.", "warning");
-                    }
-                } else {
-                    console.warn(`is.gd API error: ${response.status} ${response.statusText}`);
+                const data = await response.json(); // Expecting JSON response
+
+                if (response.ok && data.shorturl) {
+                    shareUrlInput.value = data.shorturl;
+                    showNotification("Короткая ссылка создана!", "success");
+                } else if (data.errormessage) {
+                    console.warn("is.gd API error:", data.errormessage);
                     shareUrlInput.value = longShareUrl; // Fallback to long URL
-                    showNotification("Не удалось сократить ссылку (ошибка API). Используется полная ссылка.", "warning");
+                    showNotification(`Ошибка сокращения: ${data.errormessage}. Используется полная ссылка.`, "warning", 5000);
+                } else {
+                    // This case might happen if response is OK but JSON is not as expected
+                    console.warn("is.gd returned unexpected JSON or error:", data);
+                    shareUrlInput.value = longShareUrl; // Fallback to long URL
+                    showNotification("Не удалось сократить (неизвестный ответ API). Используется полная ссылка.", "warning", 5000);
                 }
 
-            } catch (error) {
+            } catch (error) { // Catches network errors or issues with fetch/JSON parsing
                 console.error("Error generating or shortening share link:", error);
                 shareUrlInput.value = longShareUrl || "#error-generating-link"; // Fallback to long URL if available
-                showNotification("Ошибка при создании ссылки. Попробуйте снова.", "error");
+                showNotification(`Ошибка при создании/сокращении ссылки: ${error.message}. Попробуйте снова.`, "error", 5000);
             } finally {
-                showShareModal(); // Show modal regardless of shortening success
+                showShareModal(); 
                 shareBtn.innerHTML = originalShareBtnContent;
                 shareBtn.disabled = false;
             }
@@ -1412,7 +1412,7 @@ function greet(name) {
             }
         }
         
-        console.log("CodeNotes JS fully loaded. Target ~1000 lines achieved or exceeded.");
+        console.log("CodeNotes JS fully loaded.");
 
     </script>
 </body>
